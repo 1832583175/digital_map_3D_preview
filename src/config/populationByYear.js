@@ -75,3 +75,11 @@ export function getPopulationByYear(year) {
         value: map[c.name] != null ? map[c.name] : c.value
     }));
 }
+
+// 把当前数据挂到 window 上，供 /data-editor.html 数据填表台读取
+if (typeof window !== 'undefined') {
+    window.__MAP_DATA__ = {
+        cities: cities.map((c) => ({ ...c })),
+        years: JSON.parse(JSON.stringify(VALUES))
+    };
+}

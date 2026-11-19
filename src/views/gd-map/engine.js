@@ -26777,7 +26777,6 @@ class $K extends dZ {
                 this.flyLineFocusGroup.visible = !(window.__MAP_FX_PREFS__ && window.__MAP_FX_PREFS__.flyLine === !1), h0.$emit("mapPlayComplete")
             }
         }, "focusMapOpacity"), this.allBar.map((e, n) => {
-            if (e.userData.name === "喀什地区") return !1;
             t.to(e.scale, {
                 duration: 1,
                 delay: .1 * n,
@@ -27067,7 +27066,11 @@ class $K extends dZ {
     }
     createBar() {
         let t = this,
-            e = Ax(eD).filter((l, u) => u < 7);
+            e = Ax(eD);
+        // 改动：柱体（光柱）+ 底部光圈 + 数值标签只给 14 个地州建，10 个兵团市不建，
+        // 画面更干净且与用户要求一致；最高的喀什柱也不再隐藏，每个地州都有光柱。
+        const bingtuan = new Set(["石河子市", "阿拉尔市", "图木舒克市", "五家渠市", "北屯市", "铁门关市", "双河市", "可克达拉市", "昆玉市", "胡杨河市"]);
+        e = e.filter((l) => !bingtuan.has(l.name));
         const n = new pn;
         this.barGroup = n;
         const i = .7,
@@ -27096,10 +27099,8 @@ class $K extends dZ {
                 [g, v] = this.geoProjection(l.centroid);
             p.position.set(g, -v, this.depth + .45), p.scale.set(1, 1, 0), p.userData = {
                 ...l,
-                // 记录柱体几何高度（原位基准）与是否隐藏柱体（模板对最高的喀什柱
-                // 只显示光柱不显示实体柱，切年份数据时必须沿用该意图）
-                _barH: c,
-                _hideBar: l.name === "喀什地区"
+                // 记录柱体几何高度（原位基准），切年份数据时按它算缩放比例
+                _barH: c
             };
             let m = this.createQuan(new V(g, this.depth + .44, v), u),
                 y = this.createHUIGUANG(c, u > 3 ? 16776948 : 7863285);
@@ -27107,13 +27108,6 @@ class $K extends dZ {
             let _ = s(l, u, new V(g, -v, this.depth + 1.1 + c));
             p.userData._label = _, this.allBar.push(p), this.allBarMaterial.push(h), this.allGuangquan.push(m), this.allProvinceLabel.push(_)
         }), this.scene.add(n);
-        // 新增：为其余地州补充人口标签（只立标签、不立柱子），高度用统一基准，
-        // 编号延续柱状图排名，并纳入 allProvinceLabel 统一受「人口标签」开关控制。
-        const top7 = new Set(e.map(l => l.name));
-        eD.filter(l => !top7.has(l.name)).sort((l, u) => u.value - l.value).map((l, u) => {
-            const [g, v] = this.geoProjection(l.centroid || l.center);
-            this.allProvinceLabel.push(s(l, 7 + u, new V(g, -v, this.depth + 1.1)))
-        });
 
         function s(l, u, c) {
             let h = t.label3d.create("", "provinces-label", !1);
@@ -27139,9 +27133,12 @@ class $K extends dZ {
         const t = this,
             a = 4 * .7; // 与 createBar 保持一致的柱高系数（i = .7）
         const valMap = new Map(list.map((l) => [l.name, l.value]));
-        const maxV = Math.max(...list.map((l) => l.value));
-        const rank = new Map([...list].sort((l, u) => u.value - l.value).map((l, i) => [l.name, i + 1]));
-        // 1) 柱体高度 + 对应标签悬浮高度（隐藏柱体只动标签）
+        // 排名与柱高比例只在 14 个地州内计算（兵团市无柱无标签）
+        const bingtuan = new Set(["石河子市", "阿拉尔市", "图木舒克市", "五家渠市", "北屯市", "铁门关市", "双河市", "可克达拉市", "昆玉市", "胡杨河市"]);
+        const prefectures = list.filter((l) => !bingtuan.has(l.name));
+        const maxV = Math.max(...prefectures.map((l) => l.value));
+        const rank = new Map([...prefectures].sort((l, u) => u.value - l.value).map((l, i) => [l.name, i + 1]));
+        // 1) 柱体高度 + 对应标签悬浮高度
         this.allBar.map((bar) => {
             const name = bar.userData.name,
                 nv = valMap.get(name),
@@ -27150,7 +27147,7 @@ class $K extends dZ {
             const newC = a * (nv / maxV),
                 label = bar.userData._label;
             Fn.killTweensOf(bar.scale), label && Fn.killTweensOf(label.position);
-            if (!bar.userData._hideBar) Fn.to(bar.scale, {
+            Fn.to(bar.scale, {
                 z: newC / barH,
                 duration: .8,
                 ease: "power2.inOut"

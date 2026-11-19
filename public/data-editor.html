@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大屏数据填表台</title>
+<style>
+:root{--bg:#06182f;--panel:#0c2b4d;--line:#1d4a78;--cyan:#4fd8ff;--text:#cfe8ff;--dim:#7fa5c9;--warn:#ffb84d}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(1200px 600px at 50% -10%,#0d3a66 0%,var(--bg) 60%);color:var(--text);
+font-family:"Microsoft YaHei",system-ui,sans-serif;min-height:100vh;padding:28px 20px 60px}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:22px;letter-spacing:6px;color:#e8f6ff;text-align:center;text-shadow:0 0 14px rgba(79,216,255,.5)}
+h1::after{content:'';display:block;width:220px;height:2px;margin:10px auto 0;
+background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
+.sub{text-align:center;color:var(--dim);font-size:13px;margin:10px 0 24px;letter-spacing:2px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+.step{background:linear-gradient(180deg,rgba(23,74,124,.5),rgba(10,42,76,.4));border:1px solid var(--line);
+border-top:2px solid rgba(79,216,255,.6);padding:12px 14px;font-size:13px;line-height:1.7}
+.step b{color:var(--cyan)}
+.step .no{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;
+background:rgba(79,216,255,.15);border:1px solid var(--cyan);color:var(--cyan);font-size:12px;margin-right:6px}
+.tblbox{background:var(--panel);border:1px solid var(--line);padding:6px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 10px;text-align:center;border-bottom:1px solid rgba(29,74,120,.55)}
+th{color:var(--cyan);letter-spacing:2px;background:rgba(29,74,120,.35);position:sticky;top:0}
+td.name{text-align:left;white-space:nowrap}
+tr.pref td.name{color:#ffe9b8}
+tr.pref td:first-child::before{content:'◆ ';color:var(--warn);font-size:10px}
+td.group{color:var(--dim);text-align:left;font-weight:bold;letter-spacing:3px;background:rgba(6,24,47,.6)}
+input{width:72px;background:rgba(6,24,47,.7);border:1px solid var(--line);color:#e8f6ff;
+padding:4px 6px;font-size:13px;text-align:center;border-radius:3px;outline:none}
+input:focus{border-color:var(--cyan);box-shadow:0 0 6px rgba(79,216,255,.4)}
+input.err{border-color:#ff6b6b;background:rgba(255,107,107,.12)}
+.btns{text-align:center;margin:22px 0 8px}
+button{cursor:pointer;font-family:inherit;font-size:14px;letter-spacing:2px;padding:10px 26px;margin:0 8px;
+color:#04182e;background:linear-gradient(180deg,#67e0ff,#2fa8d8);border:none;border-radius:3px;
+box-shadow:0 0 14px rgba(79,216,255,.35);transition:filter .2s,transform .1s}
+button:hover{filter:brightness(1.12)}
+button:active{transform:scale(.97)}
+button.ghost{color:var(--cyan);background:transparent;border:1px solid var(--cyan);box-shadow:none}
+.note{font-size:12px;color:var(--dim);line-height:1.9;margin-top:16px;background:rgba(6,24,47,.5);
+border:1px dashed var(--line);padding:12px 16px}
+.note b{color:#ffe9b8}
+.tip{text-align:center;color:var(--cyan);font-size:13px;margin-top:10px;min-height:20px;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>大屏数据填表台</h1>
+  <div class="sub">改完数据 → 下载文件 → 上传 GitHub，约 1 分钟后网站自动更新</div>
+
+  <div class="steps">
+    <div class="step"><span class="no">1</span><b>填表</b>：直接修改下面表格里的数值（◆ 为 14 个地州，决定柱子和标签）。</div>
+    <div class="step"><span class="no">2</span><b>下载</b>：点下方「下载数据文件」，得到 populationByYear.js。</div>
+    <div class="step"><span class="no">3</span><b>上传</b>：打开 <a style="color:#4fd8ff" href="https://github.com/1832583175/digital_map_3D_preview/tree/main/src/config" target="_blank">GitHub 的 src/config 目录</a> → Add file → Upload files → 拖入下载的文件 → Commit changes。等 Actions 跑完（约 1 分钟）刷新网站即可。</div>
+  </div>
+
+  <div class="tblbox">
+    <table id="tbl">
+      <thead><tr><th style="text-align:left">地区</th><th>2024 年</th><th>2025 年</th><th>2026 年</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="btns">
+    <button id="btnSave">⬇ 下载数据文件</button>
+    <button id="btnReset" class="ghost">↺ 恢复为网站当前数据</button>
+  </div>
+  <div class="tip" id="tip"></div>
+
+  <div class="note">
+    <b>说明</b>：<br>
+    ① ◆ 标记的 14 个地州：显示光柱、底部光圈和数值标签，柱子高度按数值大小比例生成，排名序号自动计算；<br>
+    ② 其余 10 个兵团市只影响数据完整性，不在地图上显示柱子和标签；<br>
+    ③ 「探矿概览」按钮显示 2024 年基础数据，点击年份按钮地图自动切换该年数据；<br>
+    ④ 下载的文件请务必上传到 <b>digital_map_3D_preview 仓库的 src/config 目录</b>（不要放根目录，也不要动主仓库 digital_map_3D）。
+  </div>
+</div>
+
+<script>
+// 兜底数据（与线上当前版本一致）；页面加载后还会尝试从主站读取最新数据
+var FALLBACK = {"cities":[{"name":"乌鲁木齐市","value":408},{"name":"克拉玛依市","value":49},{"name":"吐鲁番市","value":69},{"name":"哈密市","value":67},{"name":"昌吉回族自治州","value":162},{"name":"博尔塔拉蒙古自治州","value":48},{"name":"巴音郭楞蒙古自治州","value":138},{"name":"阿克苏地区","value":271},{"name":"克孜勒苏柯尔克孜自治州","value":62},{"name":"喀什地区","value":463},{"name":"和田地区","value":253},{"name":"伊犁哈萨克自治州","value":285},{"name":"塔城地区","value":91},{"name":"阿勒泰地区","value":66},{"name":"石河子市","value":76},{"name":"阿拉尔市","value":41},{"name":"图木舒克市","value":27},{"name":"五家渠市","value":13},{"name":"北屯市","value":11},{"name":"铁门关市","value":10},{"name":"双河市","value":6},{"name":"可克达拉市","value":8},{"name":"昆玉市","value":6},{"name":"胡杨河市","value":5}],"years":{"2025":{"乌鲁木齐市":438,"克拉玛依市":51,"吐鲁番市":71,"哈密市":69,"昌吉回族自治州":170,"博尔塔拉蒙古自治州":49,"巴音郭楞蒙古自治州":143,"阿克苏地区":264,"克孜勒苏柯尔克孜自治州":63,"喀什地区":466,"和田地区":270,"伊犁哈萨克自治州":298,"塔城地区":95,"阿勒泰地区":68,"石河子市":79,"阿拉尔市":43,"图木舒克市":28,"五家渠市":14,"北屯市":12,"铁门关市":11,"双河市":7,"可克达拉市":9,"昆玉市":7,"胡杨河市":6},"2026":{"乌鲁木齐市":462,"克拉玛依市":53,"吐鲁番市":73,"哈密市":71,"昌吉回族自治州":176,"博尔塔拉蒙古自治州":51,"巴音郭楞蒙古自治州":148,"阿克苏地区":268,"克孜勒苏柯尔克孜自治州":64,"喀什地区":471,"和田地区":263,"伊犁哈萨克自治州":310,"塔城地区":98,"阿勒泰地区":70,"石河子市":82,"阿拉尔市":45,"图木舒克市":30,"五家渠市":14,"北屯市":12,"铁门关市":11,"双河市":7,"可克达拉市":9,"昆玉市":8,"胡杨河市":6}}};
+
+var BINGTUAN = ["石河子市","阿拉尔市","图木舒克市","五家渠市","北屯市","铁门关市","双河市","可克达拉市","昆玉市","胡杨河市"];
+var YEARS = ["2024","2025","2026"];
+var DATA = JSON.parse(JSON.stringify(FALLBACK));
+var baseValue = {}; // 2024 基础值（城市自带）
+DATA.cities.forEach(function(c){ baseValue[c.name] = c.value; });
+
+function isPref(name){ return BINGTUAN.indexOf(name) < 0; }
+function valOf(name, year){
+  if (year === "2024") return (DATA.years["2024"] && DATA.years["2024"][name] != null) ? DATA.years["2024"][name] : baseValue[name];
+  var m = DATA.years[year] || {};
+  return m[name] != null ? m[name] : baseValue[name];
+}
+
+function render(){
+  var tb = document.getElementById('tbody');
+  tb.innerHTML = '';
+  var rows = DATA.cities.slice().sort(function(a,b){
+      var pa = isPref(a.name)?0:1, pb = isPref(b.name)?0:1;
+      if (pa!==pb) return pa-pb;
+      return b.value - a.value;
+  });
+  rows.forEach(function(c, idx){
+    if (idx===14){
+      var g = document.createElement('tr');
+      g.innerHTML = '<td class="group" colspan="4">— 以下为兵团市（地图上不显示柱与标签）—</td>';
+      tb.appendChild(g);
+    }
+    var tr = document.createElement('tr');
+    if (isPref(c.name)) tr.className = 'pref';
+    var tds = '<td class="name">' + c.name + '</td>';
+    YEARS.forEach(function(y){
+      tds += '<td><input data-name="' + c.name + '" data-year="' + y + '" value="' + valOf(c.name, y) + '"></td>';
+    });
+    tr.innerHTML = tds;
+    tb.appendChild(tr);
+  });
+  Array.prototype.forEach.call(tb.querySelectorAll('input'), function(inp){
+    inp.addEventListener('change', function(){
+      var v = Number(inp.value);
+      if (!(v >= 0) || inp.value.trim() === ''){ inp.classList.add('err'); return; }
+      inp.classList.remove('err');
+      var name = inp.getAttribute('data-name'), y = inp.getAttribute('data-year');
+      if (!DATA.years[y]) DATA.years[y] = {};
+      DATA.years[y][name] = v;
+    });
+  });
+}
+
+// 从主站读取当前生效的数据（同源 iframe）
+(function loadDataFromSite(){
+  try {
+    var f = document.createElement('iframe');
+    f.src = '/'; f.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(f);
+    var tries = 0;
+    var timer = setInterval(function(){
+      tries++;
+      var d = null;
+      try { d = f.contentWindow && f.contentWindow.__MAP_DATA__; } catch(e){}
+      if (d && d.cities && d.cities.length){
+        clearInterval(timer);
+        DATA = { cities: JSON.parse(JSON.stringify(d.cities)), years: JSON.parse(JSON.stringify(d.years || {})) };
+        baseValue = {};
+        DATA.cities.forEach(function(c){ baseValue[c.name] = c.value; });
+        render();
+        tip('✓ 已读取网站当前生效的数据', 3000);
+        setTimeout(function(){ f.remove(); }, 200);
+      } else if (tries > 25){
+        clearInterval(timer);
+        tip('未读到网站数据，使用内置数据（不影响使用）', 5000);
+        setTimeout(function(){ f.remove(); }, 200);
+      }
+    }, 700);
+  } catch(e){}
+})();
+
+function tip(msg, ms){
+  var el = document.getElementById('tip');
+  el.textContent = msg;
+  if (ms) setTimeout(function(){ el.textContent = ''; }, ms);
+}
+
+function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
+
+document.getElementById('btnSave').addEventListener('click', function(){
+  // 校验
+  var bad = Array.prototype.filter.call(document.querySelectorAll('input'), function(i){ return i.classList.contains('err'); });
+  if (bad.length){ tip('✗ 有 ' + bad.length + ' 个格子数值不合法（需为 ≥0 的数字），已标红', 4000); return; }
+  var out = [];
+  out.push('/**');
+  out.push(' * 各年份数据（单位：万人）');
+  out.push(' * 本文件由「大屏数据填表台」自动生成于 ' + new Date().toLocaleString());
+  out.push(' * 基础数据来自 src/config/cities.js；VALUES 中写了哪个年份，哪一年就用覆盖值。');
+  out.push(' */');
+  out.push("import cities from './cities.js';");
+  out.push('');
+  out.push('const VALUES = {');
+  YEARS.forEach(function(y, yi){
+    var map = DATA.years[y] || {};
+    var changed = DATA.cities.some(function(c){ return map[c.name] != null && map[c.name] !== baseValue[c.name]; });
+    if (y === '2024' && !changed) return; // 2024 未改动就不写入，节省体积
+    out.push('    ' + y + ': {');
+    var items = DATA.cities.filter(function(c){ return map[c.name] != null; });
+    items.forEach(function(c, i){
+      out.push('        "' + esc(c.name) + '": ' + map[c.name] + (i < items.length - 1 ? ',' : ''));
+    });
+    out.push('    }' + (yi < YEARS.length - 1 ? ',' : ''));
+  });
+  out.push('};');
+  out.push('');
+  out.push('export function getPopulationByYear(year) {');
+  out.push('    const map = VALUES[year];');
+  out.push('    if (!map) return cities.map((c) => ({ ...c }));');
+  out.push('    return cities.map((c) => ({');
+  out.push('        ...c,');
+  out.push('        value: map[c.name] != null ? map[c.name] : c.value');
+  out.push('    }));');
+  out.push('}');
+  out.push('');
+  out.push("// 把当前数据挂到 window 上，供 /data-editor.html 数据填表台读取");
+  out.push("if (typeof window !== 'undefined') {");
+  out.push('    window.__MAP_DATA__ = {');
+  out.push('        cities: cities.map((c) => ({ ...c })),');
+  out.push('        years: JSON.parse(JSON.stringify(VALUES))');
+  out.push('    };');
+  out.push('}');
+  var blob = new Blob([out.join('\n')], { type: 'text/javascript' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'populationByYear.js';
+  document.body.appendChild(a); a.click(); a.remove();
+  tip('✓ 已下载 populationByYear.js，按第 3 步上传到 GitHub 即可', 8000);
+});
+
+document.getElementById('btnReset').addEventListener('click', function(){
+  DATA = JSON.parse(JSON.stringify(FALLBACK));
+  baseValue = {};
+  DATA.cities.forEach(function(c){ baseValue[c.name] = c.value; });
+  render();
+  tip('已恢复为内置数据（刷新页面可重新读取网站最新数据）', 4000);
+});
+
+render();
+</script>
+</body>
+</html>

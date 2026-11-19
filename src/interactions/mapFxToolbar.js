@@ -8,8 +8,8 @@
 const POLL_INTERVAL = 800
 const POLL_MAX = 90
 
-// 默认偏好：监测点默认关闭（关掉就不要显示）
-window.__MAP_FX_PREFS__ = window.__MAP_FX_PREFS__ || { infoPoint: false }
+// 默认偏好：监测点（轮播小卡片）默认开启；此前按用户要求默认关闭，现已恢复
+window.__MAP_FX_PREFS__ = window.__MAP_FX_PREFS__ || { infoPoint: true }
 
 const ICONS = {
     bar: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 13V8M8 13V3M13 13V10"/></svg>',
